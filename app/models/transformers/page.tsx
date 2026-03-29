@@ -1,180 +1,210 @@
 import type { Metadata } from "next"
+import { ApiEntry, ApiTable } from "@/components/api-entry"
 
 export const metadata: Metadata = {
-  title: "Transformers Utilities | Torch Pharma",
-  description: "Distributions, gradient flow monitoring, and conditional sampling utilities",
+  title: "torch_pharma.models.transformers | Torch Pharma",
+  description: "API reference for distributions, gradient logging, and conditional sampling utilities",
 }
 
 export default function TransformersPage() {
   return (
     <main className="mx-auto max-w-3xl">
-      <h1 className="mb-2 text-4xl font-bold">Transformers Utilities</h1>
-      <p className="mb-8 text-muted-foreground">
-        <code>torch_pharma.models.transformers</code> — Distributions, gradient utilities, and
-        conditional sampling helpers
+      <h1 className="mb-2 text-3xl font-bold">torch_pharma.models.transformers</h1>
+      <p className="mb-8 text-sm text-muted-foreground">
+        Molecule-size distributions, property distributions, gradient utilities, and conditional sampling helpers.
       </p>
 
-      <p className="mb-6">
-        This module does not implement transformer architectures in the classical sense. Instead, it
-        provides <em>training orchestration utilities</em> that were historically co-located with the
-        diffusion sampler: node-count distributions, property distributions, gradient flow logging, and
-        conditional sampling helpers.
-      </p>
+      <pre className="api-code-block mb-8"><code>{`from torch_pharma.models.transformers import (
+    NumNodesDistribution,
+    PropertiesDistribution,
+    CategoricalDistribution,
+    Queue,
+    compute_mean_mad,
+    log_grad_flow_lite,
+    log_grad_flow_full,
+)`}</code></pre>
 
-      {/* --- NumNodesDistribution --- */}
-      <h2 className="mb-4 mt-8 text-2xl font-semibold">
-        <code>NumNodesDistribution</code>
-      </h2>
-      <p className="mb-4">
-        A learnable-free, histogram-based prior over molecule sizes. Wraps a{" "}
-        <code>torch.distributions.Categorical</code> distribution fitted from dataset node counts.
-        Registered as an <code>nn.Module</code> so its buffers move with <code>.to(device)</code>.
-      </p>
-      <pre className="mb-4 overflow-x-auto rounded-md bg-muted p-4 text-sm">
-        <code>{`histogram = {9: 3450, 17: 1200, 29: 800, ...}   # {num_nodes: count}
+      <h2 className="api-category">Classes</h2>
+      <ApiTable rows={[
+        { name: "NumNodesDistribution",    href: "#nnd",   description: "Histogram prior p(N) over molecule node counts." },
+        { name: "PropertiesDistribution",  href: "#pd",    description: "Per-size empirical prior over molecular property values for conditional generation." },
+        { name: "CategoricalDistribution", href: "#cd",    description: "Fixed histogram over discrete categories with KL divergence measurement." },
+        { name: "Queue",                   href: "#queue", description: "Fixed-length FIFO for rolling metric windows." },
+      ]} />
+
+      <h2 className="api-category">Functions</h2>
+      <ApiTable rows={[
+        { name: "compute_mean_mad(dataloaders, properties, dataset_name)", href: "#meanmad",   description: "Compute per-property mean and MAD (mean absolute deviation) from the training dataloader." },
+        { name: "log_grad_flow_lite(named_parameters, wandb_run)",         href: "#gradlite",  description: "Plot mean absolute gradients per layer as a WandB line chart." },
+        { name: "log_grad_flow_full(named_parameters, wandb_run)",         href: "#gradfull",  description: "Plot both max and mean gradient bar charts to WandB." },
+        { name: "sample_sweep_conditionally(model, props_distr, ...)",     href: "#sweep",     description: "Generate molecules by sweeping a property linearly from min to max for a fixed molecule size." },
+        { name: "save_and_sample_conditionally(exp_name, model, ...)",     href: "#savesample",description: "Run a conditional property sweep, save XYZ files, and render a denoising chain GIF." },
+      ]} />
+
+      {/* ── NumNodesDistribution ── */}
+      <div id="nnd" className="mt-10">
+        <ApiEntry
+          name="torch_pharma.models.transformers.NumNodesDistribution"
+          kind="class"
+          signature="histogram"
+          description="An nn.Module that wraps a torch.distributions.Categorical fitted to a dataset node-count histogram. Provides .sample() and .log_prob() for use in the diffusion generative process. Buffers move with .to(device)."
+          params={[
+            { name: "histogram", type: "dict[int, int]", description: "Mapping {num_nodes: count} from the training dataset." },
+          ]}
+          example={`from torch_pharma.models.transformers import NumNodesDistribution
+
+histogram = {9: 3450, 17: 1200, 29: 800}
 dist = NumNodesDistribution(histogram)
-n_samples = dist.sample(n_samples=64)             # → [64] long tensor
-log_p = dist.log_prob(batch_n_nodes)              # → [B] log probs`}</code>
-      </pre>
 
-      {/* --- PropertiesDistribution --- */}
-      <h2 className="mb-4 mt-8 text-2xl font-semibold">
-        <code>PropertiesDistribution</code>
-      </h2>
-      <p className="mb-4">
-        An empirical distribution over molecular properties <em>conditioned on molecule size</em>. Used
-        for guided generation: at sampling time, draw a context vector consistent with the target
-        molecule size from this distribution.
-      </p>
-      <div className="mb-4 overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted">
-            <tr>
-              <th className="px-4 py-2 text-left">Method</th>
-              <th className="px-4 py-2 text-left">Description</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            <tr>
-              <td className="px-4 py-2 font-mono">__init__(dataloader, properties, device, num_bins)</td>
-              <td className="px-4 py-2">
-                Builds per-size, per-property binned histograms from the training dataloader
-              </td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">set_normalizer(normalizer)</td>
-              <td className="px-4 py-2">Attach mean/MAD statistics for property normalization</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">sample(num_nodes=19)</td>
-              <td className="px-4 py-2">Sample a context vector for a molecule of size num_nodes</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">sample_batch(num_nodes)</td>
-              <td className="px-4 py-2">Batched form: sample one context vector per element of num_nodes</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">normalize_tensor(tensor, prop)</td>
-              <td className="px-4 py-2">Z-score normalize a property value using stored mean/MAD</td>
-            </tr>
-          </tbody>
-        </table>
+n = dist.sample(n_samples=64)       # Tensor (64,) long
+lp = dist.log_prob(n)               # Tensor (64,) float`}
+          methods={[
+            {
+              name: "sample",
+              signature: "n_samples",
+              description: "Sample n_samples integers from the prior distribution p(N).",
+              params: [{ name: "n_samples", type: "int", description: "Number of samples to draw." }],
+              returns: "Tensor — shape (n_samples,), dtype long",
+            },
+            {
+              name: "log_prob",
+              signature: "batch_n_nodes",
+              description: "Evaluate log p(N) for a batch of node counts.",
+              params: [{ name: "batch_n_nodes", type: "Tensor", description: "1D long tensor of node counts." }],
+              returns: "Tensor — log probabilities, same shape as input",
+            },
+          ]}
+        />
       </div>
 
-      {/* --- CategoricalDistribution --- */}
-      <h2 className="mb-4 mt-8 text-2xl font-semibold">
-        <code>CategoricalDistribution</code>
-      </h2>
-      <p className="mb-4">
-        Wraps a fixed histogram distribution over discrete categories (e.g., atom types). Provides a KL
-        divergence method to evaluate how well generated molecule distributions match the training
-        distribution.
-      </p>
-      <pre className="mb-6 overflow-x-auto rounded-md bg-muted p-4 text-sm">
-        <code>{`dist = CategoricalDistribution(histogram_dict, mapping)
-kl = dist.kl_divergence(other_samples)  # list of category indices`}</code>
-      </pre>
-
-      {/* --- Queue --- */}
-      <h2 className="mb-4 mt-8 text-2xl font-semibold">
-        <code>Queue</code>
-      </h2>
-      <p className="mb-4">
-        A simple fixed-length FIFO queue (backed by a Python list) used to maintain a moving window of
-        recent metric values (e.g., rolling NLL estimate during training).
-      </p>
-      <pre className="mb-6 overflow-x-auto rounded-md bg-muted p-4 text-sm">
-        <code>{`q = Queue(max_len=50)
-q.add(loss.item())
-print(q.mean(), q.std())`}</code>
-      </pre>
-
-      {/* --- Gradient flow --- */}
-      <h2 className="mb-4 mt-8 text-2xl font-semibold">Gradient Flow Logging</h2>
-      <div className="mb-6 space-y-4">
-        <div className="rounded-md border p-4">
-          <p className="mb-1 font-mono font-semibold">log_grad_flow_lite(named_parameters, wandb_run)</p>
-          <p className="text-sm text-muted-foreground">
-            Plots mean absolute gradients per non-bias layer as a line chart on WandB. Useful for
-            detecting gradient vanishing.
-          </p>
-        </div>
-        <div className="rounded-md border p-4">
-          <p className="mb-1 font-mono font-semibold">log_grad_flow_full(named_parameters, wandb_run)</p>
-          <p className="text-sm text-muted-foreground">
-            Full version: overlays both max and mean gradient bar charts, exposing both vanishing and
-            exploding gradient conditions.
-          </p>
-        </div>
-      </div>
-      <p className="mb-6">
-        Both functions are no-ops when <code>wandb_run is None</code>, making them safe to call
-        unconditionally.
-      </p>
-
-      {/* --- Sampling helpers --- */}
-      <h2 className="mb-4 mt-8 text-2xl font-semibold">Conditional Sampling Helpers</h2>
-      <div className="mb-6 space-y-4">
-        <div className="rounded-md border p-4">
-          <p className="mb-1 font-mono font-semibold">
-            sample_sweep_conditionally(model, props_distr, num_nodes=19, num_frames=100)
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Generates <code>num_frames</code> molecules by linearly sweeping a property from its min to
-            max value for a fixed molecule size. Useful for latent space visualization.
-          </p>
-        </div>
-        <div className="rounded-md border p-4">
-          <p className="mb-1 font-mono font-semibold">
-            save_and_sample_conditionally(experiment_name, model, props_distr, dataset_info, epoch)
-          </p>
-          <p className="text-sm text-muted-foreground">
-            End-to-end helper: runs a conditional property sweep, saves XYZ files to{" "}
-            <code>outputs/{"<experiment>"}/.../</code>, and renders them as a chain GIF.
-          </p>
-        </div>
+      {/* ── PropertiesDistribution ── */}
+      <div id="pd" className="mt-10">
+        <ApiEntry
+          name="torch_pharma.models.transformers.PropertiesDistribution"
+          kind="class"
+          signature="dataloader, properties, device, num_bins=1000"
+          description="An empirical distribution over molecular property values conditioned on molecule size. Built from the training dataloader by binning each property into num_bins histogram bins per molecule size. Used for conditional generation: sample a context vector consistent with a target molecule size."
+          params={[
+            { name: "dataloader", type: "DataLoader", description: "Training dataloader used to build the histograms." },
+            { name: "properties", type: "list[str]", description: "List of property keys to model (must match batch dict keys)." },
+            { name: "device", type: "torch.device", description: "Device for storing the histogram tensors." },
+            { name: "num_bins", type: "int", description: "Number of bins per property per molecule size.", default: "1000" },
+          ]}
+          methods={[
+            {
+              name: "set_normalizer",
+              signature: "normalizer",
+              description: "Attach a mean/MAD normalizer dict (e.g. from compute_mean_mad) for property normalization.",
+              params: [{ name: "normalizer", type: "dict", description: "Output of compute_mean_mad()." }],
+              returns: "None",
+            },
+            {
+              name: "sample",
+              signature: "num_nodes=19",
+              description: "Sample a single context property vector for a molecule with num_nodes atoms.",
+              params: [{ name: "num_nodes", type: "int", description: "Number of atoms.", default: "19" }],
+              returns: "Tensor — context vector of shape (len(properties),)",
+            },
+            {
+              name: "sample_batch",
+              signature: "num_nodes",
+              description: "Batch version of sample: draw one context vector per element of num_nodes.",
+              params: [{ name: "num_nodes", type: "Tensor", description: "1D long tensor, one entry per molecule in the batch." }],
+              returns: "Tensor — context matrix of shape (B, len(properties))",
+            },
+            {
+              name: "normalize_tensor",
+              signature: "tensor, prop",
+              description: "Z-score normalize property values using stored mean and MAD.",
+              params: [
+                { name: "tensor", type: "Tensor", description: "Raw property values." },
+                { name: "prop", type: "str", description: "Property name, used to look up mean/MAD in the normalizer." },
+              ],
+              returns: "Tensor — normalized values",
+            },
+          ]}
+        />
       </div>
 
-      {/* --- Statistics --- */}
-      <h2 className="mb-4 mt-8 text-2xl font-semibold">Property Statistics</h2>
-      <div className="mb-6 space-y-4">
-        <div className="rounded-md border p-4">
-          <p className="mb-1 font-mono font-semibold">
-            compute_mean_mad(dataloaders, properties, dataset_name)
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Computes per-property mean and MAD (Mean Absolute Deviation) from the training dataloader.
-            Returns a nested dict:{" "}
-            <code>{"{prop: {\"mean\": ..., \"mad\": ...}}"}</code>
-          </p>
-        </div>
-        <div className="rounded-md border p-4">
-          <p className="mb-1 font-mono font-semibold">inflate_batch_array(array, target)</p>
-          <p className="text-sm text-muted-foreground">
-            Re-exported from <code>utils.math</code>. Broadcasts a batch-level scalar array to match the
-            shape of a node-level target tensor.
-          </p>
-        </div>
+      {/* ── CategoricalDistribution ── */}
+      <div id="cd" className="mt-10">
+        <ApiEntry
+          name="torch_pharma.models.transformers.CategoricalDistribution"
+          kind="class"
+          signature="histogram, mapping"
+          description="A fixed discrete distribution over named categories (e.g. atom types). Primarily used to compare generated molecule type distributions against the training distribution via KL divergence."
+          params={[
+            { name: "histogram", type: "dict[str, int]", description: "Mapping {category_name: count} from the training dataset." },
+            { name: "mapping", type: "list[str]", description: "Ordered list of all category names defining the distribution alphabet." },
+          ]}
+          methods={[
+            {
+              name: "kl_divergence",
+              signature: "samples",
+              description: "Estimate KL[q ∥ p] where q is the empirical distribution of samples and p is this prior.",
+              params: [{ name: "samples", type: "list[str]", description: "Generated category labels." }],
+              returns: "float — KL divergence value",
+            },
+          ]}
+        />
+      </div>
+
+      {/* ── Queue ── */}
+      <div id="queue" className="mt-10">
+        <ApiEntry
+          name="torch_pharma.models.transformers.Queue"
+          kind="class"
+          signature="max_len=50"
+          description="Fixed-length FIFO queue backed by a Python list. Evicts the oldest entry when full. Used during training to maintain a rolling window of recent metric values."
+          params={[
+            { name: "max_len", type: "int", description: "Maximum number of entries before eviction.", default: "50" },
+          ]}
+          example={`from torch_pharma.models.transformers import Queue
+
+q = Queue(max_len=50)
+q.add(0.32)
+q.add(0.28)
+print(q.mean(), q.std())`}
+          methods={[
+            { name: "add", signature: "val", description: "Append val to the queue. Evicts the oldest item if at capacity.", returns: "None" },
+            { name: "mean", signature: "", description: "Compute the mean of all current entries.", returns: "float" },
+            { name: "std", signature: "", description: "Compute the standard deviation of all current entries.", returns: "float" },
+          ]}
+        />
+      </div>
+
+      {/* ── compute_mean_mad ── */}
+      <div id="meanmad" className="mt-10">
+        <ApiEntry
+          name="torch_pharma.models.transformers.compute_mean_mad"
+          kind="function"
+          signature="dataloaders, properties, dataset_name"
+          description="Compute per-property mean and Mean Absolute Deviation (MAD) from the training dataloader. Returns a nested dict suitable for passing to PropertiesDistribution.set_normalizer()."
+          params={[
+            { name: "dataloaders", type: "dict[str, DataLoader]", description: "Dict with at least a 'train' key." },
+            { name: "properties", type: "list[str]", description: "Property keys to compute statistics for." },
+            { name: "dataset_name", type: "str", description: "Dataset identifier string (used for logging)." },
+          ]}
+          returns="dict[str, dict[str, float]] — {prop: {'mean': ..., 'mad': ...}}"
+          example={`from torch_pharma.models.transformers import compute_mean_mad
+
+normalizer = compute_mean_mad(dataloaders, properties=["alpha", "mu"], dataset_name="qm9")`}
+        />
+      </div>
+
+      {/* ── log_grad_flow_lite ── */}
+      <div id="gradlite" className="mt-10">
+        <ApiEntry
+          name="torch_pharma.models.transformers.log_grad_flow_lite"
+          kind="function"
+          signature="named_parameters, wandb_run"
+          description="Plot the mean absolute gradient value per non-bias layer as a line chart to WandB. Useful for detecting gradient vanishing. Is a no-op if wandb_run is None."
+          params={[
+            { name: "named_parameters", type: "Iterable[Tuple[str, Parameter]]", description: "model.named_parameters()." },
+            { name: "wandb_run", type: "wandb.Run or None", description: "Active WandB run. Pass None to disable logging." },
+          ]}
+          returns="None"
+        />
       </div>
     </main>
   )

@@ -1,332 +1,206 @@
 import type { Metadata } from "next"
+import { ApiEntry, ApiTable } from "@/components/api-entry"
 
 export const metadata: Metadata = {
-  title: "Diffusion Models | Torch Pharma",
-  description: "Equivariant Variational Diffusion and noise schedules for 3D molecule generation",
+  title: "torch_pharma.models.diffusion | Torch Pharma",
+  description: "API reference for the diffusion module — EquivariantVariationalDiffusion, noise schedules",
 }
 
 export default function DiffusionPage() {
   return (
     <main className="mx-auto max-w-3xl">
-      <h1 className="mb-2 text-4xl font-bold">Diffusion Models</h1>
-      <p className="mb-8 text-muted-foreground">
-        <code>torch_pharma.models.diffusion</code>
+      <h1 className="mb-2 text-3xl font-bold">torch_pharma.models.diffusion</h1>
+      <p className="mb-8 text-sm text-muted-foreground">
+        3D equivariant diffusion models for de-novo molecule generation.
       </p>
 
-      <p className="mb-6">
-        This module implements <strong>Equivariant Variational Diffusion (EVD)</strong> for de-novo 3D molecule
-        generation. It is a continuous-time diffusion model that operates jointly over atom coordinates{" "}
-        <em>x</em> (geometric) and atom-type one-hot features <em>h</em> (categorical/integer),
-        preserving E(3) equivariance throughout the diffusion and denoising process.
-      </p>
+      {/* ── Index table ── */}
+      <h2 className="api-category">Classes</h2>
+      <ApiTable rows={[
+        { name: "EquivariantVariationalDiffusion", href: "#evd", description: "Continuous-time SE(3)-equivariant variational diffusion model for joint 3D coordinate and atom-type generation." },
+        { name: "PredefinedNoiseSchedule",         href: "#pns", description: "Fixed analytic noise schedule (cosine or polynomial) mapping normalised time t → log-SNR γ(t)." },
+        { name: "GammaNetwork",                    href: "#gamma", description: "Learnable monotone noise schedule implemented as a positive-weight MLP." },
+        { name: "PositiveLinear",                  href: "#poslin", description: "Linear layer with weights constrained positive via softplus; used inside GammaNetwork." },
+      ]} />
 
-      <h2 className="mb-4 mt-8 text-2xl font-semibold">Architecture Overview</h2>
-      <pre className="mb-6 overflow-x-auto rounded-md bg-muted p-4 text-sm">
-        <code>{`EquivariantVariationalDiffusion
-  ├── dynamics_network      # injected nn.Module (e.g., EGNNDynamics / GCPNetDynamics)
-  ├── NumNodesDistribution  # prior p(N) from dataset histogram
-  └── noise schedule        # GammaNetwork (learned) | PredefinedNoiseSchedule (fixed)`}</code>
-      </pre>
-
-      <h2 className="mb-4 mt-8 text-2xl font-semibold">
-        <code>EquivariantVariationalDiffusion</code>
-      </h2>
-      <p className="mb-4">
-        The main generative model. Initialized with a <em>dynamics network</em> that acts as the denoising
-        backbone; all other hyperparameters control the noise schedule and normalization.
-      </p>
-
-      <h3 className="mb-3 mt-6 text-lg font-semibold">Constructor</h3>
-      <div className="mb-6 overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted">
-            <tr>
-              <th className="px-4 py-2 text-left">Parameter</th>
-              <th className="px-4 py-2 text-left">Type</th>
-              <th className="px-4 py-2 text-left">Default</th>
-              <th className="px-4 py-2 text-left">Description</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            <tr>
-              <td className="px-4 py-2 font-mono">dynamics_network</td>
-              <td className="px-4 py-2">nn.Module</td>
-              <td className="px-4 py-2">—</td>
-              <td className="px-4 py-2">Denoising backbone (EGNNDynamics or GCPNetDynamics)</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">dataset_info</td>
-              <td className="px-4 py-2">Dict</td>
-              <td className="px-4 py-2">—</td>
-              <td className="px-4 py-2">Must contain <code>n_nodes</code> histogram for the node-count prior</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">num_atom_types</td>
-              <td className="px-4 py-2">int</td>
-              <td className="px-4 py-2">16</td>
-              <td className="px-4 py-2">Size of the one-hot atom-type vocabulary</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">num_x_dims</td>
-              <td className="px-4 py-2">int</td>
-              <td className="px-4 py-2">3</td>
-              <td className="px-4 py-2">Spatial dimensionality (always 3 for molecules)</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">include_charges</td>
-              <td className="px-4 py-2">bool</td>
-              <td className="px-4 py-2">False</td>
-              <td className="px-4 py-2">Whether to diffuse integer charge features alongside atom types</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">num_timesteps</td>
-              <td className="px-4 py-2">int</td>
-              <td className="px-4 py-2">1000</td>
-              <td className="px-4 py-2">Total diffusion steps T</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">parametrization</td>
-              <td className="px-4 py-2">str</td>
-              <td className="px-4 py-2">"eps"</td>
-              <td className="px-4 py-2">Only <code>"eps"</code> (noise prediction) is currently supported</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">noise_schedule</td>
-              <td className="px-4 py-2">str</td>
-              <td className="px-4 py-2">"polynomial_2"</td>
-              <td className="px-4 py-2"><code>cosine</code> | <code>polynomial_n</code> | <code>polynomial_2</code> | <code>learned</code></td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">noise_precision</td>
-              <td className="px-4 py-2">float</td>
-              <td className="px-4 py-2">1e-5</td>
-              <td className="px-4 py-2">Clipping floor for polynomial schedules</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">loss_type</td>
-              <td className="px-4 py-2">str</td>
-              <td className="px-4 py-2">"l2"</td>
-              <td className="px-4 py-2"><code>"l2"</code> or <code>"vlb"</code> (required for learned schedule)</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">norm_values</td>
-              <td className="px-4 py-2">List[float]</td>
-              <td className="px-4 py-2">[1.0, 4.0, 10.0]</td>
-              <td className="px-4 py-2">Scale factors for [coords, categorical, integer] features</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">self_condition</td>
-              <td className="px-4 py-2">bool</td>
-              <td className="px-4 py-2">True</td>
-              <td className="px-4 py-2">Use self-conditioning to improve sample quality</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">diffusion_target</td>
-              <td className="px-4 py-2">str</td>
-              <td className="px-4 py-2">"atom_types_and_coords"</td>
-              <td className="px-4 py-2">What features to jointly diffuse; only this target is currently supported</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <h3 className="mb-3 mt-6 text-lg font-semibold">Key Methods</h3>
-      <div className="mb-6 space-y-4">
-        <div className="rounded-md border p-4">
-          <p className="mb-1 font-mono font-semibold">forward(batch, return_loss_info=False)</p>
-          <p className="text-sm text-muted-foreground">
-            Computes the diffusion training objective. Internally dispatches to{" "}
-            <code>atom_types_and_coords_forward()</code>. Returns a tuple of loss tensors including the
-            negative ELBO decomposed into L2/VLB terms, KL prior, and log p(N).
-          </p>
-        </div>
-        <div className="rounded-md border p-4">
-          <p className="mb-1 font-mono font-semibold">
-            sample(num_samples, num_nodes, context=None, fix_noise=False)
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Ancestral sampling from the trained model. Iterates from t=T to t=0, computing{" "}
-            <code>p(z_s | z_t)</code> at each step and decoding into atom coordinates and types.
-          </p>
-        </div>
-        <div className="rounded-md border p-4">
-          <p className="mb-1 font-mono font-semibold">
-            compute_noised_representation(xh, batch_index, node_mask, gamma_t)
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Computes z_t = α_t · xh + σ_t · ε for a given noise level gamma_t. Returns the noised
-            tensor and the sampled noise ε.
-          </p>
-        </div>
-        <div className="rounded-md border p-4">
-          <p className="mb-1 font-mono font-semibold">compute_kl_prior(xh, batch_index, node_mask, num_nodes, device)</p>
-          <p className="text-sm text-muted-foreground">
-            Analytical KL divergence KL[q(z₁|x) ∥ p(z₁)] between the forward process at T=1 and
-            the unit Gaussian prior. Computed separately for geometric (x) and scalar (h) parts.
-          </p>
-        </div>
-      </div>
-
-      <h3 className="mb-3 mt-6 text-lg font-semibold">Static Utility Methods</h3>
-      <div className="mb-6 overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted">
-            <tr>
-              <th className="px-4 py-2 text-left">Method</th>
-              <th className="px-4 py-2 text-left">Description</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            <tr>
-              <td className="px-4 py-2 font-mono">sigma(gamma, target)</td>
-              <td className="px-4 py-2">σ = √sigmoid(γ)</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">alpha(gamma, target)</td>
-              <td className="px-4 py-2">α = √sigmoid(-γ)</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">SNR(gamma)</td>
-              <td className="px-4 py-2">Signal-to-noise ratio = exp(-γ) = α²/σ²</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">sigma_and_alpha_t_given_s(γ_t, γ_s, target)</td>
-              <td className="px-4 py-2">Transition terms σ(t|s) and α(t|s) used during reverse sampling</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">gaussian_KL(q_mu_sq, q_sigma, p_sigma, d)</td>
-              <td className="px-4 py-2">Analytical Gaussian KL divergence in d dimensions</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">sample_center_gravity_zero_gaussian_with_mask(...)</td>
-              <td className="px-4 py-2">
-                Samples CoG-zero Gaussian noise for coordinates (translation-invariant projection)
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <h2 className="mb-4 mt-10 text-2xl font-semibold">Noise Schedules</h2>
-      <p className="mb-4">
-        Noise schedules are defined in <code>torch_pharma.models.diffusion.noise</code> and map a normalized
-        time <em>t ∈ [0, 1]</em> to a log-SNR value γ(t).
-      </p>
-
-      <h3 className="mb-3 mt-6 text-lg font-semibold">
-        <code>PredefinedNoiseSchedule</code>
-      </h3>
-      <p className="mb-4">
-        Non-learnable schedule. Precomputes all γ values from a chosen analytic curve and stores them as a
-        frozen buffer. At forward time it performs integer rounding for fast lookup.
-      </p>
-      <div className="mb-6 overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted">
-            <tr>
-              <th className="px-4 py-2 text-left">Schedule</th>
-              <th className="px-4 py-2 text-left">Function</th>
-              <th className="px-4 py-2 text-left">When to Use</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            <tr>
-              <td className="px-4 py-2 font-mono">cosine</td>
-              <td className="px-4 py-2">cos²-based ᾱ schedule (Nichol & Dhariwal 2021)</td>
-              <td className="px-4 py-2">General-purpose, avoids very fast noise near t=0</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">polynomial_2</td>
-              <td className="px-4 py-2">1 - (t/T)² clipped schedule</td>
-              <td className="px-4 py-2">Default; strong performance on QM9</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">polynomial_n</td>
-              <td className="px-4 py-2">1 - (t/T)^n, power specified in the schedule name string</td>
-              <td className="px-4 py-2">Experimental schedules with custom polynomial power</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <h3 className="mb-3 mt-6 text-lg font-semibold">
-        <code>GammaNetwork</code>
-      </h3>
-      <p className="mb-4">
-        A learned noise schedule implemented as a monotone MLP using <code>PositiveLinear</code> layers.
-        The network is parameterized as:
-      </p>
-      <pre className="mb-6 overflow-x-auto rounded-md bg-muted p-4 text-sm">
-        <code>{`γ̃(t) = l1(t) + l3(sigmoid(l2(l1(t))))
-γ(t) = γ₀ + (γ₁ - γ₀) * (γ̃(t) - γ̃(0)) / (γ̃(1) - γ̃(0))`}</code>
-      </pre>
-      <p className="mb-4">
-        Boundaries γ₀ (≈ -5) and γ₁ (≈ 10) are learnable parameters. Only valid when{" "}
-        <code>loss_type="vlb"</code>.
-      </p>
-
-      <h3 className="mb-3 mt-6 text-lg font-semibold">
-        <code>PositiveLinear</code>
-      </h3>
-      <p className="mb-4">
-        A linear layer whose weights are guaranteed positive via <code>softplus</code>. This is the
-        building block that makes <code>GammaNetwork</code> monotonically increasing.
-      </p>
-
-      <h2 className="mb-4 mt-10 text-2xl font-semibold">Usage Example</h2>
-      <pre className="mb-6 overflow-x-auto rounded-md bg-muted p-4 text-sm">
-        <code>{`from torch_pharma.models.diffusion import EquivariantVariationalDiffusion
+      {/* ──────────────────────────────────────────────────────────────── */}
+      <div id="evd" className="mt-10">
+        <ApiEntry
+          name="torch_pharma.models.diffusion.EquivariantVariationalDiffusion"
+          kind="class"
+          signature="dynamics_network, dataset_info, num_atom_types=16, num_x_dims=3, include_charges=False, num_timesteps=1000, parametrization='eps', noise_schedule='polynomial_2', noise_precision=1e-5, loss_type='l2', norm_values=(1.0, 4.0, 10.0), norm_biases=(0.0, 0.0, 0.0), self_condition=True, diffusion_target='atom_types_and_coords'"
+          description="Equivariant Variational Diffusion (EVD) model. Jointly diffuses 3D atom coordinates (x) and atom-type features (h) using a continuous-time forward process and a learned denoising backbone. The forward process is translation-invariant: coordinate noise is projected onto the zero centre-of-gravity subspace at every step."
+          params={[
+            { name: "dynamics_network", type: "nn.Module", description: "Denoising backbone (e.g. EGNNDynamics or GCPNetDynamics). Must accept a noisy batch and return predicted noise." },
+            { name: "dataset_info", type: "dict", description: "Must contain an 'n_nodes' key with a histogram dict {num_nodes: count} used to build the node-count prior." },
+            { name: "num_atom_types", type: "int", description: "Vocabulary size of the one-hot atom-type encoding.", default: "16" },
+            { name: "num_x_dims", type: "int", description: "Spatial dimensionality of atom coordinates. Always 3 for molecules.", default: "3" },
+            { name: "include_charges", type: "bool", description: "If True, integer atomic charge is appended to h and jointly diffused.", default: "False" },
+            { name: "num_timesteps", type: "int", description: "Total diffusion steps T.", default: "1000" },
+            { name: "parametrization", type: "str", description: "Noise parametrization. Only 'eps' (predicting added noise) is supported.", default: "'eps'" },
+            { name: "noise_schedule", type: "str", description: "One of 'cosine', 'polynomial_2', 'polynomial_n', or 'learned'. 'learned' requires loss_type='vlb'.", default: "'polynomial_2'" },
+            { name: "noise_precision", type: "float", description: "Numerical clipping floor applied to polynomial schedule values.", default: "1e-5" },
+            { name: "loss_type", type: "str", description: "'l2' for simple MSE loss or 'vlb' for variational lower bound. 'vlb' is required when noise_schedule='learned'.", default: "'l2'" },
+            { name: "norm_values", type: "tuple[float, ...]", description: "Per-channel scale factors applied before diffusion for [coordinates, categorical features, integer features].", default: "(1.0, 4.0, 10.0)" },
+            { name: "norm_biases", type: "tuple[float, ...]", description: "Per-channel bias applied before diffusion.", default: "(0.0, 0.0, 0.0)" },
+            { name: "self_condition", type: "bool", description: "Enable self-conditioning: the previous prediction is fed back as an additional input with probability 0.5 during training.", default: "True" },
+            { name: "diffusion_target", type: "str", description: "Specifies which features are jointly diffused. Currently only 'atom_types_and_coords' is supported.", default: "'atom_types_and_coords'" },
+          ]}
+          example={`from torch_pharma.models.diffusion import EquivariantVariationalDiffusion
 from torch_pharma.models.dynamics.egnn import EGNNDynamics
 
-# 1. Build the denoising backbone
-dynamics = EGNNDynamics(
-    num_atom_types=16,
-    num_encoder_layers=9,
-    h_hidden_dim=256,
-)
+dynamics = EGNNDynamics(num_atom_types=5, h_hidden_dim=256, num_encoder_layers=9)
 
-# 2. Wrap in EVD
 model = EquivariantVariationalDiffusion(
     dynamics_network=dynamics,
     dataset_info=dataset_info,   # must contain "n_nodes" histogram
-    num_atom_types=16,
+    num_atom_types=5,
     noise_schedule="polynomial_2",
     num_timesteps=1000,
-    loss_type="l2",
-    self_condition=True,
 )
 
-# 3. Training step
-loss, *loss_terms = model(batch)
+# Training step
+loss, *_ = model(batch)
 loss.backward()
 
-# 4. Sampling
-x, h = model.sample(num_samples=64, num_nodes=torch.tensor([19]*64))`}</code>
-      </pre>
+# Sampling
+from torch_pharma.utils.io import num_nodes_to_batch_index
+num_nodes = torch.tensor([19] * 32)
+samples = model.sample(num_samples=32, num_nodes=num_nodes)`}
+          methods={[
+            {
+              name: "forward",
+              signature: "batch, return_loss_info=False",
+              description: "Compute the diffusion training objective. Samples a random timestep t, computes q(z_t | x), runs the denoising network, and returns the loss.",
+              params: [
+                { name: "batch", type: "torch_geometric.data.Batch", description: "Batched molecular graph with attributes: x (coords), h (atom types), batch (graph index), node_mask." },
+                { name: "return_loss_info", type: "bool", optional: true, description: "If True, also return a dict of individual loss components.", default: "False" },
+              ],
+              returns: "Tuple[Tensor, ...] — (total_loss, loss_t, loss_0, loss_vlb, kl_prior)",
+            },
+            {
+              name: "sample",
+              signature: "num_samples, num_nodes, context=None, fix_noise=False",
+              description: "Ancestral sampling. Runs the reverse diffusion chain from t=T to t=0 and decodes into atom coordinates and types.",
+              params: [
+                { name: "num_samples", type: "int", description: "Number of molecules to generate." },
+                { name: "num_nodes", type: "Tensor", description: "1D long tensor of shape [num_samples] specifying how many atoms each generated molecule should have." },
+                { name: "context", type: "Tensor, optional", description: "Property conditioning tensor of shape [num_samples, num_context_features].", default: "None" },
+                { name: "fix_noise", type: "bool", optional: true, description: "If True, use the same noise realisation across all sampling steps for visualisation.", default: "False" },
+              ],
+              returns: "Tuple[Tensor, Tensor] — (x, h) atom coordinates and one-hot atom types",
+            },
+            {
+              name: "compute_noised_representation",
+              signature: "xh, batch_index, node_mask, gamma_t",
+              description: "Compute z_t = α_t · xh + σ_t · ε given a pre-sampled noise level gamma_t.",
+              returns: "Tuple[Tensor, Tensor] — (z_t, epsilon)",
+            },
+            {
+              name: "compute_kl_prior",
+              signature: "xh, batch_index, node_mask, num_nodes, device",
+              description: "Analytical KL divergence KL[q(z₁|x) ∥ p(z₁)] between the fully-noised distribution at t=T and the unit Gaussian prior. Computed separately for coordinates and scalar features then summed.",
+              returns: "Tensor — per-graph KL values, shape [batch_size]",
+            },
+            {
+              name: "normalize",
+              signature: "x, h, node_mask",
+              description: "Apply norm_values and norm_biases to scale x and h before diffusion.",
+              returns: "Tuple[Tensor, dict] — (x_norm, h_norm_dict)",
+            },
+            {
+              name: "unnormalize",
+              signature: "x, h_cat, h_int, node_mask",
+              description: "Inverse of normalize. Recovers original-scale features from normalized form.",
+              returns: "Tuple[Tensor, Tensor, Tensor] — (x, h_cat, h_int)",
+            },
+          ]}
+        />
+      </div>
 
-      <h2 className="mb-4 mt-10 text-2xl font-semibold">Design Notes</h2>
-      <ul className="mb-6 list-inside list-disc space-y-2 text-muted-foreground">
-        <li>
-          <strong>Constructor injection:</strong> The dynamics network is passed as an argument, not
-          instantiated inside the diffusion model. This cleanly separates generative process logic from
-          architecture choices.
-        </li>
-        <li>
-          <strong>Translation invariance:</strong>{" "}
-          <code>sample_center_gravity_zero_gaussian_with_mask</code> ensures coordinate noise lives in the
-          zero-CoG subspace, making generation equivariant.
-        </li>
-        <li>
-          <strong>Self-conditioning:</strong> When enabled, the model receives its own previous
-          prediction xh_self_cond as additional input during the forward pass (with probability 0.5 during
-          training).
-        </li>
-        <li>
-          <strong>Normalization:</strong> <code>norm_values</code> and <code>norm_biases</code> scale
-          features before diffusion; a built-in check <code>detect_issues_with_norm_values</code>{" "}
-          validates that the normalization is not too aggressive relative to σ₀.
-        </li>
-      </ul>
+      {/* ── PredefinedNoiseSchedule ── */}
+      <div id="pns" className="mt-10">
+        <ApiEntry
+          name="torch_pharma.models.diffusion.PredefinedNoiseSchedule"
+          kind="class"
+          signature="noise_schedule, timesteps, precision"
+          description="A non-learnable noise schedule. Precomputes a buffer of γ values from a chosen analytic curve indexed by integer timestep. At forward time performs a rounded integer lookup — O(1) and gradient-free."
+          params={[
+            { name: "noise_schedule", type: "str", description: "Schedule type: 'cosine', 'polynomial_2', or 'polynomial_n' where n is an integer exponent." },
+            { name: "timesteps", type: "int", description: "Total number of diffusion steps T. Buffer length = T + 1." },
+            { name: "precision", type: "float", description: "Minimum clamp value for polynomial schedules to avoid numerical underflow." },
+          ]}
+          example={`from torch_pharma.models.diffusion.noise import PredefinedNoiseSchedule
+
+sched = PredefinedNoiseSchedule(
+    noise_schedule="polynomial_2",
+    timesteps=1000,
+    precision=1e-5,
+)
+t = torch.tensor([0.5])
+gamma = sched(t)  # → scalar log-SNR`}
+          methods={[
+            {
+              name: "forward",
+              signature: "t",
+              description: "Look up the precomputed γ for a normalized time t ∈ [0, 1]. Converts to integer index via rounding.",
+              params: [{ name: "t", type: "Tensor", description: "Normalized timestep tensor, values in [0, 1]." }],
+              returns: "Tensor — γ(t), same shape as t",
+            },
+          ]}
+        />
+      </div>
+
+      {/* ── GammaNetwork ── */}
+      <div id="gamma" className="mt-10">
+        <ApiEntry
+          name="torch_pharma.models.diffusion.GammaNetwork"
+          kind="class"
+          signature=""
+          description="A learnable monotone noise schedule. Implemented as a small MLP built from PositiveLinear layers, ensuring γ is strictly increasing in t. Valid only when loss_type='vlb'."
+          note="GammaNetwork learns γ₀ (≈ -5) and γ₁ (≈ 10) as trainable scalar parameters. The output is renormalized so that γ(0) = γ₀ and γ(1) = γ₁ at all times."
+          example={`from torch_pharma.models.diffusion.noise import GammaNetwork
+
+sched = GammaNetwork()
+t = torch.linspace(0, 1, 100)
+gamma = sched(t)   # learned γ(t) curve`}
+          methods={[
+            {
+              name: "forward",
+              signature: "t",
+              description: "Evaluate the learned schedule at normalized times t ∈ [0, 1].",
+              params: [{ name: "t", type: "Tensor", description: "Normalized timestep tensor." }],
+              returns: "Tensor — γ(t)",
+            },
+          ]}
+        />
+      </div>
+
+      {/* ── PositiveLinear ── */}
+      <div id="poslin" className="mt-10">
+        <ApiEntry
+          name="torch_pharma.models.diffusion.PositiveLinear"
+          kind="class"
+          signature="in_features, out_features, bias=True"
+          description="A linear layer whose weights are constrained positive by applying softplus. Used as the building block of GammaNetwork to guarantee a monotonically increasing noise schedule."
+          params={[
+            { name: "in_features", type: "int", description: "Size of each input sample." },
+            { name: "out_features", type: "int", description: "Size of each output sample." },
+            { name: "bias", type: "bool", description: "If True, adds a learnable bias.", default: "True" },
+          ]}
+        />
+      </div>
+
+      {/* ── Static utility functions ── */}
+      <h2 className="api-category mt-10">Functions</h2>
+      <ApiTable rows={[
+        { name: "sigma(gamma, target)",                   href: "#", description: "σ(γ) = √sigmoid(γ). Returns the noise std at log-SNR γ." },
+        { name: "alpha(gamma, target)",                   href: "#", description: "α(γ) = √sigmoid(−γ). Returns the signal retention at log-SNR γ." },
+        { name: "SNR(gamma)",                             href: "#", description: "Signal-to-noise ratio = exp(−γ) = α²/σ²." },
+        { name: "sigma_and_alpha_t_given_s(γ_t, γ_s)",   href: "#", description: "Transition terms σ(t|s) and α(t|s) needed during reverse sampling." },
+        { name: "gaussian_KL(q_mu_sq, q_sigma, p_sigma, d)", href: "#", description: "Closed-form KL divergence between two Gaussians in d dimensions." },
+        { name: "sample_center_gravity_zero_gaussian_with_mask(...)", href: "#", description: "Sample zero-CoG Gaussian noise for equivariant coordinate perturbation." },
+      ]} />
     </main>
   )
 }

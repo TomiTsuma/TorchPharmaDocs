@@ -1,265 +1,188 @@
 import type { Metadata } from "next"
+import { ApiEntry, ApiTable } from "@/components/api-entry"
 
 export const metadata: Metadata = {
-  title: "Utils Module | Torch Pharma",
-  description: "Mathematical, IO, visualization, and seed utilities",
+  title: "torch_pharma.utils | Torch Pharma",
+  description: "API reference for math, IO, and visualization utilities",
 }
 
 export default function UtilsPage() {
   return (
     <main className="mx-auto max-w-3xl">
-      <h1 className="mb-2 text-4xl font-bold">Utils</h1>
-      <p className="mb-8 text-muted-foreground">
-        <code>torch_pharma.utils</code> — Cross-cutting utility functions
+      <h1 className="mb-2 text-3xl font-bold">torch_pharma.utils</h1>
+      <p className="mb-8 text-sm text-muted-foreground">
+        Mathematical helpers, molecular IO, and 3D visualization utilities.
       </p>
 
-      <p className="mb-6">
-        The utils package provides standalone helper functions grouped by concern: mathematics, IO,
-        visualization, seeding, and vector operations. All functions are decorated with{" "}
-        <code>@typechecked</code> via <code>torchtyping</code>, giving informative error messages on shape
-        mismatches.
-      </p>
+      {/* ─── utils.math ─── */}
+      <h2 className="mt-2 text-2xl font-semibold">torch_pharma.utils.math</h2>
+      <pre className="api-code-block my-4"><code>{`from torch_pharma.utils.math import (
+    safe_norm, norm_no_nan, is_identity,
+    inflate_batch_array, get_grad_norm,
+    batch_tensor_to_list, reverse_tensor,
+)`}</code></pre>
 
-      {/* ── utils.math ── */}
-      <h2 className="mb-4 mt-8 text-2xl font-semibold">
-        <code>utils.math</code>
-      </h2>
-      <div className="mb-6 overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted">
-            <tr>
-              <th className="px-4 py-2 text-left">Function</th>
-              <th className="px-4 py-2 text-left">Signature</th>
-              <th className="px-4 py-2 text-left">Description</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            <tr>
-              <td className="px-4 py-2 font-mono">safe_norm</td>
-              <td className="px-4 py-2 font-mono text-xs">
-                (x, dim=-1, eps=1e-8, keepdim=False, sqrt=True) → Tensor
-              </td>
-              <td className="px-4 py-2">
-                L2 norm with eps stabilization. Returns <code>sqrt(sum(x²) + eps) + eps</code> when{" "}
-                <code>sqrt=True</code>.
-              </td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">norm_no_nan</td>
-              <td className="px-4 py-2 font-mono text-xs">
-                (x, dim=-1, keepdim=False, eps=1e-8, sqrt=True) → Tensor
-              </td>
-              <td className="px-4 py-2">
-                GVP-style clamped L2 norm. Uses <code>torch.clamp(sum(x²), min=eps)</code> for clean
-                gradient behavior at zero.
-              </td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">is_identity</td>
-              <td className="px-4 py-2 font-mono text-xs">(nonlinearity) → bool</td>
-              <td className="px-4 py-2">
-                Returns True if the nonlinearity is None or an <code>nn.Identity</code> instance.
-              </td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">inflate_batch_array</td>
-              <td className="px-4 py-2 font-mono text-xs">(array, target) → Tensor</td>
-              <td className="px-4 py-2">
-                Reshape a <code>[batch_size]</code> array to broadcast against a target of arbitrary rank
-                by appending singleton dims. Critical for applying per-graph noise levels to per-node tensors.
-              </td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">get_grad_norm</td>
-              <td className="px-4 py-2 font-mono text-xs">(parameters, norm_type=2.0) → Tensor</td>
-              <td className="px-4 py-2">
-                Computes the total gradient norm across all parameters with gradients. Useful for
-                monitoring gradient health without clipping.
-              </td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">batch_tensor_to_list</td>
-              <td className="px-4 py-2 font-mono text-xs">(data, batch_index) → Tuple[Tensor, ...]</td>
-              <td className="px-4 py-2">
-                Splits a batched flat tensor along graph boundaries using <code>torch.split</code>.
-                Assumes <code>batch_index</code> is sorted.
-              </td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">reverse_tensor</td>
-              <td className="px-4 py-2 font-mono text-xs">(x) → Tensor</td>
-              <td className="px-4 py-2">
-                Reverses a 1D tensor. Used during reverse diffusion to iterate timesteps from T to 0.
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <h3 className="api-category">Functions</h3>
+      <ApiTable rows={[
+        { name: "safe_norm",            href: "#safenorm",    description: "Numerically stable L2 norm: √(∑x² + ε) + ε." },
+        { name: "norm_no_nan",          href: "#normnonan",   description: "GVP-style clamped norm: √max(∑x², ε)." },
+        { name: "is_identity",          href: "#isidentity2", description: "Return True if a nonlinearity is None or nn.Identity." },
+        { name: "inflate_batch_array",  href: "#inflate",     description: "Broadcast a [B] scalar array to match a higher-rank per-node tensor." },
+        { name: "get_grad_norm",        href: "#gradnorm",    description: "Compute total gradient norm across all parameters with gradients." },
+        { name: "batch_tensor_to_list", href: "#batchlist",   description: "Split a batched flat tensor into per-graph tensors." },
+        { name: "reverse_tensor",       href: "#reverse",     description: "Reverse a 1D tensor (used during reverse diffusion)." },
+      ]} />
+
+      <div id="inflate" className="mt-10">
+        <ApiEntry
+          name="torch_pharma.utils.math.inflate_batch_array"
+          kind="function"
+          signature="array, target"
+          description="Reshape a per-graph [batch_size] tensor to broadcast against a per-node or per-edge tensor of arbitrary rank. Appends singleton dimensions until array.ndim == target.ndim."
+          params={[
+            { name: "array", type: "Tensor", description: "1D tensor of shape (B,), one value per graph in the batch." },
+            { name: "target", type: "Tensor", description: "Target tensor whose rank determines how many singleton dims to append." },
+          ]}
+          returns="Tensor — shape (B, 1, 1, ...) broadcastable against target"
+          example={`from torch_pharma.utils.math import inflate_batch_array
+
+gamma_t = torch.randn(32)            # one gamma per graph
+x       = torch.randn(320, 3)        # 10 atoms * 32 graphs
+
+alpha_t = inflate_batch_array(gamma_t, x)   # (32, 1)
+z_t = alpha_t * x                            # broadcasts correctly`}
+        />
       </div>
 
-      {/* ── utils.io ── */}
-      <h2 className="mb-4 mt-8 text-2xl font-semibold">
-        <code>utils.io</code>
-      </h2>
-      <div className="mb-6 overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted">
-            <tr>
-              <th className="px-4 py-2 text-left">Function</th>
-              <th className="px-4 py-2 text-left">Description</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            <tr>
-              <td className="px-4 py-2 font-mono">save_xyz_file(path, positions, one_hot, ...)</td>
-              <td className="px-4 py-2">
-                Writes batched 3D molecules to individual <code>.xyz</code> files (one per graph). Decodes
-                one-hot atom types using <code>dataset_info["atom_decoder"]</code>.
-              </td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">write_xyz_file(positions, atom_types, filename)</td>
-              <td className="px-4 py-2">Writes a single molecule to an XYZ file with integer atom type labels.</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">write_sdf_file(sdf_path, molecules)</td>
-              <td className="px-4 py-2">
-                Writes a list of RDKit <code>Chem.Mol</code> objects to an SDF file using{" "}
-                <code>SDWriter</code>. Skips None entries.
-              </td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">load_molecule_xyz(file, dataset_info)</td>
-              <td className="px-4 py-2">
-                Parses an XYZ file and returns <code>(positions, one_hot)</code> tensors using the dataset
-                atom encoder mapping.
-              </td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">load_files_with_ext(path, ext, shuffle=True)</td>
-              <td className="px-4 py-2">
-                Glob-based file listing with optional random shuffle. Returns a list of absolute paths.
-              </td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">num_nodes_to_batch_index(num_samples, num_nodes, device)</td>
-              <td className="px-4 py-2">
-                Constructs the <code>batch_index</code> tensor (e.g., <code>[0,0,0,1,1,...]</code>) from
-                per-graph node counts. Used to initialize sampling without a data batch.
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div id="gradnorm" className="mt-10">
+        <ApiEntry
+          name="torch_pharma.utils.math.get_grad_norm"
+          kind="function"
+          signature="parameters, norm_type=2.0"
+          description="Compute the total gradient L_p norm across all parameters that have a gradient. Mirrors torch.nn.utils.clip_grad_norm_ but returns the value without clipping."
+          params={[
+            { name: "parameters", type: "Iterable[Parameter]", description: "Model parameters, typically model.parameters()." },
+            { name: "norm_type", type: "float", description: "Exponent p for the L_p norm.", default: "2.0" },
+          ]}
+          returns="Tensor — scalar gradient norm"
+        />
       </div>
 
-      {/* ── utils.visualize ── */}
-      <h2 className="mb-4 mt-8 text-2xl font-semibold">
-        <code>utils.visualize</code>
-      </h2>
-      <p className="mb-4">
-        Matplotlib-based 3D molecular visualization and GIF generation, with optional WandB logging.
-      </p>
-      <div className="mb-6 overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted">
-            <tr>
-              <th className="px-4 py-2 text-left">Function</th>
-              <th className="px-4 py-2 text-left">Description</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            <tr>
-              <td className="px-4 py-2 font-mono">visualize_mol(path, dataset_info, ...)</td>
-              <td className="px-4 py-2">
-                Load XYZ files from a directory and render each molecule as a 3D scatter/sphere plot.
-                Optionally log images to WandB.
-              </td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">visualize_mol_chain(path, dataset_info, ...)</td>
-              <td className="px-4 py-2">
-                Render a denoising trajectory as an animated GIF by reading sorted XYZ files and
-                assembling them with <code>imageio.mimsave</code>.
-              </td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">plot_data3d(positions, atom_types, ...)</td>
-              <td className="px-4 py-2">
-                Low-level 3D matplotlib render of a single molecule. Supports a sphere rendering mode
-                via <code>draw_sphere</code> and automatic post-brightening via imageio.
-              </td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">plot_molecule(ax, positions, atom_types, ...)</td>
-              <td className="px-4 py-2">
-                Draws atoms (as scatter or spheres) and bond edges (using <code>get_bond_order</code>
-                distance thresholds) onto a matplotlib 3D Axes object.
-              </td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-mono">draw_sphere(ax, x, y, z, size, color, alpha)</td>
-              <td className="px-4 py-2">
-                Renders a 3D sphere using <code>ax.plot_surface</code> with parametric angles. Used when{" "}
-                <code>spheres_3d=True</code>.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div className="mb-6 rounded-md border border-blue-300 bg-blue-50 p-4 text-sm dark:border-blue-700 dark:bg-blue-950">
-        <strong>Note:</strong> <code>visualize.py</code> currently imports from the legacy{" "}
-        <code>src.utils.pylogger</code> and <code>src.datamodules.components.edm</code> paths. These
-        should be updated to <code>torch_pharma.utils.logging</code> and the refactored EDM dataset module
-        in a future release.
+      <div id="safenorm" className="mt-10">
+        <ApiEntry
+          name="torch_pharma.utils.math.safe_norm"
+          kind="function"
+          signature="x, dim=-1, eps=1e-8, keepdim=False, sqrt=True"
+          description="Numerically stable L2 norm. Returns √(∑x² + ε) + ε when sqrt=True, preventing NaN gradients at zero vectors."
+          params={[
+            { name: "x", type: "Tensor", description: "Input tensor." },
+            { name: "dim", type: "int", description: "Reduction dimension.", default: "-1" },
+            { name: "eps", type: "float", description: "Stability constant.", default: "1e-8" },
+            { name: "keepdim", type: "bool", description: "Keep reduced dimension.", default: "False" },
+            { name: "sqrt", type: "bool", description: "Return L2 norm (True) or squared + eps (False).", default: "True" },
+          ]}
+          returns="Tensor"
+        />
       </div>
 
-      {/* ── modules.activation ── */}
-      <h2 className="mb-4 mt-8 text-2xl font-semibold">
-        <code>modules.activation</code>
-      </h2>
-      <p className="mb-4">
-        Centralizes activation function instantiation. Exported through{" "}
-        <code>torch_pharma.features</code> as <code>get_nonlinearity</code>.
-      </p>
-      <pre className="mb-4 overflow-x-auto rounded-md bg-muted p-4 text-sm">
-        <code>{`# Module-like instance
-act = get_nonlinearity("silu")              # → nn.SiLU()
-act = get_nonlinearity("leakyrelu", slope=0.01)  # → nn.LeakyReLU(0.01)
-act = get_nonlinearity(None)               # → nn.Identity()
+      {/* ─── utils.io ─── */}
+      <h2 className="mt-12 text-2xl font-semibold">torch_pharma.utils.io</h2>
+      <pre className="api-code-block my-4"><code>{`from torch_pharma.utils.io import (
+    save_xyz_file, write_xyz_file, write_sdf_file,
+    load_molecule_xyz, load_files_with_ext,
+    num_nodes_to_batch_index,
+)`}</code></pre>
 
-# Functional
-fn = get_nonlinearity("relu", return_functional=True)  # → F.relu`}</code>
-      </pre>
-      <div className="mb-6 overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted">
-            <tr>
-              <th className="px-4 py-2 text-left">Name string</th>
-              <th className="px-4 py-2 text-left">Returns</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {[
-              ["null / None", "nn.Identity()"],
-              ["relu", "nn.ReLU()"],
-              ["leakyrelu", "nn.LeakyReLU(slope)"],
-              ["selu", "nn.SELU()"],
-              ["silu / swish", "nn.SiLU() (with Swish_ fallback for old PyTorch)"],
-              ["sigmoid", "nn.Sigmoid()"],
-              ["tanh", "nn.Tanh()"],
-            ].map(([name, ret]) => (
-              <tr key={name}>
-                <td className="px-4 py-2 font-mono">{name}</td>
-                <td className="px-4 py-2 font-mono text-xs">{ret}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <h3 className="api-category">Functions</h3>
+      <ApiTable rows={[
+        { name: "save_xyz_file(path, positions, one_hot, ...)",             href: "#savexyz",    description: "Write a batch of molecules to individual .xyz files, one per graph." },
+        { name: "write_xyz_file(positions, atom_types, filename)",          href: "#writexyz",   description: "Write a single molecule to an XYZ file." },
+        { name: "write_sdf_file(sdf_path, molecules)",                      href: "#writesdf",   description: "Write a list of RDKit Mol objects to an SDF file." },
+        { name: "load_molecule_xyz(file, dataset_info)",                    href: "#loadxyz",    description: "Parse an XYZ file and return (positions, one_hot) tensors." },
+        { name: "load_files_with_ext(path, ext, shuffle)",                  href: "#loadfiles",  description: "List all files in path with a given extension, optionally shuffled." },
+        { name: "num_nodes_to_batch_index(num_samples, num_nodes, device)", href: "#batchidx",   description: "Construct a batch_index tensor from per-graph node counts." },
+      ]} />
+
+      <div id="savexyz" className="mt-10">
+        <ApiEntry
+          name="torch_pharma.utils.io.save_xyz_file"
+          kind="function"
+          signature="path, positions, one_hot, dataset_info, id_from=0, name='molecule', node_mask=None"
+          description="Write a batched set of generated molecules to individual .xyz files. Decodes one-hot atom types using dataset_info['atom_decoder']."
+          params={[
+            { name: "path", type: "str or Path", description: "Output directory. Created if it does not exist." },
+            { name: "positions", type: "Tensor", description: "Atom coordinates, shape (B, N_max, 3)." },
+            { name: "one_hot", type: "Tensor", description: "One-hot atom types, shape (B, N_max, num_atom_types)." },
+            { name: "dataset_info", type: "dict", description: "Must contain 'atom_decoder' mapping index → element symbol." },
+            { name: "id_from", type: "int", description: "Starting index used in output filenames.", default: "0" },
+            { name: "name", type: "str", description: "Filename prefix.", default: "'molecule'" },
+            { name: "node_mask", type: "Tensor, optional", description: "Boolean mask shape (B, N_max) identifying real atoms.", default: "None" },
+          ]}
+          returns="None"
+        />
       </div>
-      <p className="mb-4">
-        <code>SiLU</code> is also exported directly as a class alias that falls back to the{" "}
-        <code>Swish_</code> implementation (x·sigmoid(x)) on PyTorch versions without{" "}
-        <code>nn.SiLU</code>.
-      </p>
+
+      <div id="batchidx" className="mt-10">
+        <ApiEntry
+          name="torch_pharma.utils.io.num_nodes_to_batch_index"
+          kind="function"
+          signature="num_samples, num_nodes, device"
+          description="Construct a batch_index tensor (e.g. [0,0,0,1,1,...]) from per-graph node counts. Used to initialise sampling without a data batch."
+          params={[
+            { name: "num_samples", type: "int", description: "Total number of graphs in the batch." },
+            { name: "num_nodes", type: "Tensor", description: "1D long tensor of shape (num_samples,), per-graph atom count." },
+            { name: "device", type: "torch.device", description: "Target device for the output tensor." },
+          ]}
+          returns="Tensor — batch_index of shape (sum(num_nodes),)"
+        />
+      </div>
+
+      {/* ─── utils.visualize ─── */}
+      <h2 className="mt-12 text-2xl font-semibold">torch_pharma.utils.visualize</h2>
+      <pre className="api-code-block my-4"><code>{`from torch_pharma.utils.visualize import (
+    visualize_mol, visualize_mol_chain,
+    plot_data3d, plot_molecule,
+)`}</code></pre>
+
+      <h3 className="api-category">Functions</h3>
+      <ApiTable rows={[
+        { name: "visualize_mol(path, dataset_info, max_num, ...)", href: "#vizmol",   description: "Load XYZ files from a directory and render each as a 3D matplotlib plot. Optionally logs to WandB." },
+        { name: "visualize_mol_chain(path, dataset_info, ...)",   href: "#vizchain",  description: "Render a denoising trajectory as an animated GIF from sorted XYZ files." },
+        { name: "plot_data3d(positions, atom_types, ...)",        href: "#plot3d",    description: "Low-level 3D scatter/sphere render of a single molecule to a file." },
+        { name: "plot_molecule(ax, positions, atom_types, ...)",  href: "#plotmol",   description: "Draw atoms and bond edges onto a matplotlib 3D Axes object." },
+      ]} />
+
+      <div id="vizmol" className="mt-10">
+        <ApiEntry
+          name="torch_pharma.utils.visualize.visualize_mol"
+          kind="function"
+          signature="path, dataset_info, max_num=25, log='left', wandb_run=None"
+          description="Load .xyz files from path, render each molecule as a 3D plot, and optionally upload to WandB. Reads up to max_num files."
+          params={[
+            { name: "path", type: "str or Path", description: "Directory containing .xyz files." },
+            { name: "dataset_info", type: "dict", description: "Contains atom_decoder, colors_dic, and radius_dic." },
+            { name: "max_num", type: "int", description: "Maximum number of molecules to render.", default: "25" },
+            { name: "wandb_run", type: "wandb.Run, optional", description: "If provided, uploads images to this WandB run.", default: "None" },
+          ]}
+          returns="None"
+        />
+      </div>
+
+      <div id="vizchain" className="mt-10">
+        <ApiEntry
+          name="torch_pharma.utils.visualize.visualize_mol_chain"
+          kind="function"
+          signature="path, dataset_info, wandb_run=None, spheres_3d=False, mode='chain'"
+          description="Render a diffusion denoising trajectory as a GIF. Reads lexicographically sorted .xyz files from path (each file = one timestep) and concatenates into an animation using imageio."
+          params={[
+            { name: "path", type: "str or Path", description: "Directory of timestep .xyz files." },
+            { name: "dataset_info", type: "dict", description: "Contains atom_decoder, colors_dic, and radius_dic." },
+            { name: "wandb_run", type: "wandb.Run, optional", description: "If provided, uploads the GIF to WandB.", default: "None" },
+            { name: "spheres_3d", type: "bool", description: "Use sphere rendering (plot_surface) instead of scatter points.", default: "False" },
+          ]}
+          returns="None"
+        />
+      </div>
     </main>
   )
 }

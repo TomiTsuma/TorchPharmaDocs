@@ -113,7 +113,7 @@ export default function Home() {
       <pre className="mb-6 overflow-x-auto rounded-md bg-muted p-4 text-sm">
         <code>{`@software{torchpharma2026,
   title={Torch Pharma: A PyTorch Framework for Drug Discovery},
-  author={Your Name},
+  author={Thomas Tsuma},
   year={2026}
 }`}</code>
       </pre>
