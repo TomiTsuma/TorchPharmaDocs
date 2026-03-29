@@ -1,0 +1,152 @@
+1:"$Sreact.fragment"
+2:I[1984,["874","static/chunks/874-5b8089b53760f7ab.js","751","static/chunks/751-cf230dc613d326cf.js","177","static/chunks/app/layout-7f708007b467d9f5.js"],"SidebarProvider"]
+3:I[8317,["874","static/chunks/874-5b8089b53760f7ab.js","751","static/chunks/751-cf230dc613d326cf.js","177","static/chunks/app/layout-7f708007b467d9f5.js"],"AppSidebar"]
+4:I[1984,["874","static/chunks/874-5b8089b53760f7ab.js","751","static/chunks/751-cf230dc613d326cf.js","177","static/chunks/app/layout-7f708007b467d9f5.js"],"SidebarTrigger"]
+5:I[7555,[],""]
+6:I[1295,[],""]
+a:I[9665,[],"OutletBoundary"]
+d:I[9665,[],"ViewportBoundary"]
+f:I[9665,[],"MetadataBoundary"]
+11:I[6614,[],""]
+:HL["/TorchPharmaDocs/_next/static/css/a8eb8f326c4e74b7.css","style"]
+7:T42b,# examples/property_prediction/train_qm9.py
+from torch_pharma.datasets import QM9Dataset
+from torch_pharma.models.gnn import MPNN
+from torch_pharma.tasks import PropertyPredictionTask
+from torch_pharma.training import Trainer
+
+# Load QM9 dataset with HOMO-LUMO gap as target
+dataset = QM9Dataset(
+    root="data/qm9",
+    target="gap",
+    split_seed=42
+)
+
+train_loader, val_loader, test_loader = dataset.get_loaders(
+    batch_size=32,
+    split=[0.8, 0.1, 0.1]
+)
+
+# Initialize model
+model = MPNN(
+    node_dim=dataset.num_node_features,
+    edge_dim=dataset.num_edge_features,
+    hidden_dim=128,
+    output_dim=1,
+    num_message_passing=6
+)
+
+# Create task
+task = PropertyPredictionTask(
+    model=model,
+    loss_fn="mse",
+    metrics=["mae", "rmse", "r2"],
+    lr=1e-3
+)
+
+# Train
+trainer = Trainer(
+    max_epochs=100,
+    checkpoint_dir="checkpoints/qm9",
+    early_stopping={"patience": 10, "metric": "val_mae"}
+)
+
+trainer.fit(task, train_loader, val_loader)
+
+# Evaluate
+results = trainer.evaluate(task, test_loader)
+print(f"Test MAE: {results['mae']:.4f} eV")8:T452,# examples/molecule_generation/2302.04313/generate.py
+from torch_pharma.models.diffusion import GeometryCompleteDiffusion
+from torch_pharma.tasks import MoleculeGenerationTask
+from torch_pharma.training import Trainer
+from torch_pharma.datasets import GEOM_QM9
+
+# Load dataset for training
+dataset = GEOM_QM9(root="data/geom_qm9")
+train_loader = dataset.get_loader(batch_size=64)
+
+# Initialize diffusion model
+model = GeometryCompleteDiffusion(
+    num_atom_types=dataset.num_atom_types,
+    hidden_dim=256,
+    num_layers=6,
+    num_diffusion_steps=1000,
+    noise_schedule="cosine"
+)
+
+# Create generation task
+task = MoleculeGenerationTask(
+    model=model,
+    validation_metrics=["validity", "uniqueness", "novelty", "diversity"],
+    chemistry_constraints=True
+)
+
+# Train
+trainer = Trainer(max_epochs=500)
+trainer.fit(task, train_loader)
+
+# Generate molecules
+molecules = task.generate(num_samples=1000)
+
+# Evaluate
+metrics = task.evaluate_generation(molecules)
+print(f"Validity: {metrics['validity']:.2%}")
+print(f"Uniqueness: {metrics['uniqueness']:.2%}")
+print(f"Novelty: {metrics['novelty']:.2%}")9:T4f6,# examples/rl_optimization/optimize_qed.py
+from torch_pharma.rl.envs import MoleculeEnv
+from torch_pharma.rl.agents import PPOAgent
+from torch_pharma.rl.rewards import QED, LogP, RewardFunction
+from torch_pharma.training import Trainer
+
+# Multi-objective reward
+reward_fn = RewardFunction(
+    components=[
+        (QED(), 0.7),
+        (LogP(target=2.5, tolerance=1.0), 0.3)
+    ]
+)
+
+# Create environment
+env = MoleculeEnv(
+    task="custom",
+    reward_fn=reward_fn,
+    max_steps=50,
+    action_space="atom_edit"
+)
+
+# Initialize PPO agent
+agent = PPOAgent(
+    state_dim=env.observation_space.shape[0],
+    action_dim=env.action_space.n,
+    hidden_dim=256,
+    lr=3e-4,
+    clip_ratio=0.2
+)
+
+# Train
+trainer = Trainer(
+    max_steps=100000,
+    eval_interval=5000,
+    log_dir="experiments/qed_optimization"
+)
+
+trainer.fit(agent, env)
+
+# Generate optimized molecules
+optimized = []
+for _ in range(100):
+    state = env.reset()
+    done = False
+    while not done:
+        action = agent.select_action(state, deterministic=True)
+        state, _, done, info = env.step(action)
+    optimized.append(info["molecule"])
+
+# Report results
+qed_scores = [mol.qed for mol in optimized]
+print(f"Mean QED: {np.mean(qed_scores):.3f}")
+print(f"Max QED: {np.max(qed_scores):.3f}")0:{"P":null,"b":"W4B2c3CTncUmy-CjgjbeB","p":"/TorchPharmaDocs","c":["","examples"],"i":false,"f":[[["",{"children":["examples",{"children":["__PAGE__",{}]}]},"$undefined","$undefined",true],["",["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/TorchPharmaDocs/_next/static/css/a8eb8f326c4e74b7.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]],["$","html",null,{"lang":"en","suppressHydrationWarning":true,"children":["$","body",null,{"className":"__className_115618 antialiased","children":["$","$L2",null,{"children":[["$","$L3",null,{}],["$","$L4",null,{"className":"ml-3 mt-3"}],["$","main",null,{"className":"flex-1 overflow-auto p-8 pt-16","children":["$","$L5",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L6",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],[]],"forbidden":"$undefined","unauthorized":"$undefined"}]}]]}]}]}]]}],{"children":["examples",["$","$1","c",{"children":[null,["$","$L5",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L6",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}],{"children":["__PAGE__",["$","$1","c",{"children":[["$","main",null,{"className":"mx-auto max-w-3xl","children":[["$","h1",null,{"className":"mb-6 text-4xl font-bold","children":"Examples"}],["$","p",null,{"className":"mb-8 text-lg text-muted-foreground","children":"Complete, runnable examples demonstrating Torch Pharma capabilities. Each example is aligned with key research papers in molecular machine learning."}],["$","h2",null,{"className":"mb-4 mt-8 text-2xl font-semibold","children":"Molecular Property Prediction"}],["$","p",null,{"className":"mb-4","children":"Train a GCN model on the QM9 dataset for quantum mechanical property prediction."}],["$","div",null,{"className":"mb-4 rounded-lg border p-4","children":[["$","p",null,{"className":"mb-2 font-medium","children":"Datasets"}],["$","p",null,{"className":"text-sm text-muted-foreground","children":"QM9, ZINC"}],["$","p",null,{"className":"mb-2 mt-4 font-medium","children":"Models"}],["$","p",null,{"className":"text-sm text-muted-foreground","children":"GCN, MPNN"}],["$","p",null,{"className":"mb-2 mt-4 font-medium","children":"Related Work"}],["$","ul",null,{"className":"list-inside list-disc text-sm text-muted-foreground","children":[["$","li",null,{"children":"Gilmer et al., \"Neural Message Passing for Quantum Chemistry\" (2017)"}],["$","li",null,{"children":"Wu et al., \"MoleculeNet: A Benchmark for Molecular Machine Learning\" (2018)"}]]}]]}],["$","p",null,{"className":"mb-2 font-medium","children":"Run the example:"}],["$","pre",null,{"className":"mb-6 overflow-x-auto rounded-md bg-muted p-4","children":["$","code",null,{"children":"python examples/property_prediction/train_qm9.py"}]}],["$","p",null,{"className":"mb-2 font-medium","children":"Full code:"}],["$","pre",null,{"className":"mb-6 overflow-x-auto rounded-md bg-muted p-4 text-sm","children":["$","code",null,{"children":"$7"}]}],["$","h2",null,{"className":"mb-4 mt-8 text-2xl font-semibold","children":"3D Molecule Generation"}],["$","p",null,{"className":"mb-4","children":"Generate 3D molecular structures using geometry-complete diffusion models."}],["$","div",null,{"className":"mb-4 rounded-lg border p-4","children":[["$","p",null,{"className":"mb-2 font-medium","children":"Model"}],["$","p",null,{"className":"text-sm text-muted-foreground","children":"Geometry-Complete Diffusion"}],["$","p",null,{"className":"mb-2 mt-4 font-medium","children":"Related Work"}],["$","p",null,{"className":"text-sm text-muted-foreground","children":"Morehead et al., \"Geometry-Complete Diffusion for 3D Molecule Generation and Optimization\" (2023)"}]]}],["$","p",null,{"className":"mb-2 font-medium","children":"Run the example:"}],["$","pre",null,{"className":"mb-6 overflow-x-auto rounded-md bg-muted p-4","children":["$","code",null,{"children":"python examples/molecule_generation/2302.04313/generate.py"}]}],["$","p",null,{"className":"mb-2 font-medium","children":"Full code:"}],["$","pre",null,{"className":"mb-6 overflow-x-auto rounded-md bg-muted p-4 text-sm","children":["$","code",null,{"children":"$8"}]}],["$","h2",null,{"className":"mb-4 mt-8 text-2xl font-semibold","children":"RL-Based Molecule Optimization"}],["$","p",null,{"className":"mb-4","children":"Optimize molecular properties using reinforcement learning with PPO."}],["$","div",null,{"className":"mb-4 rounded-lg border p-4","children":[["$","p",null,{"className":"mb-2 font-medium","children":"Objective"}],["$","p",null,{"className":"text-sm text-muted-foreground","children":"Maximize drug-likeness (QED), minimize toxicity"}],["$","p",null,{"className":"mb-2 mt-4 font-medium","children":"Environment"}],["$","p",null,{"className":"text-sm text-muted-foreground","children":"Molecular graph editing"}],["$","p",null,{"className":"mb-2 mt-4 font-medium","children":"Related Work"}],["$","ul",null,{"className":"list-inside list-disc text-sm text-muted-foreground","children":[["$","li",null,{"children":"Olivecrona et al., \"Molecular De-Novo Design through Deep Reinforcement Learning\" (2017)"}],["$","li",null,{"children":"Zhou et al., \"Optimization of Molecules via Deep Reinforcement Learning\" (2019)"}]]}]]}],["$","p",null,{"className":"mb-2 font-medium","children":"Run the example:"}],["$","pre",null,{"className":"mb-6 overflow-x-auto rounded-md bg-muted p-4","children":["$","code",null,{"children":"python examples/rl_optimization/optimize_qed.py"}]}],["$","p",null,{"className":"mb-2 font-medium","children":"Full code:"}],["$","pre",null,{"className":"mb-6 overflow-x-auto rounded-md bg-muted p-4 text-sm","children":["$","code",null,{"children":"$9"}]}],["$","h2",null,{"className":"mb-4 mt-8 text-2xl font-semibold","children":"Binding Affinity Prediction"}],["$","p",null,{"className":"mb-4","children":"Predict protein-ligand binding affinity using graph-based encoders."}],["$","div",null,{"className":"mb-4 rounded-lg border p-4","children":[["$","p",null,{"className":"mb-2 font-medium","children":"Task"}],["$","p",null,{"className":"text-sm text-muted-foreground","children":"Predict protein-ligand binding strength"}],["$","p",null,{"className":"mb-2 mt-4 font-medium","children":"Datasets"}],["$","p",null,{"className":"text-sm text-muted-foreground","children":"Davis, KIBA, PDBbind"}],["$","p",null,{"className":"mb-2 mt-4 font-medium","children":"Related Work"}],["$","p",null,{"className":"text-sm text-muted-foreground","children":"Ozturk et al., \"DeepDTA: Deep Drug-Target Binding Affinity Prediction\" (2018)"}]]}],["$","p",null,{"className":"mb-2 font-medium","children":"Run the example:"}],["$","pre",null,{"className":"mb-6 overflow-x-auto rounded-md bg-muted p-4","children":["$","code",null,{"children":"python examples/binding_affinity/train_binding.py"}]}],["$","p",null,{"className":"mb-2 font-medium","children":"Full code:"}],["$","pre",null,{"className":"mb-6 overflow-x-auto rounded-md bg-muted p-4 text-sm","children":["$","code",null,{"children":"# examples/binding_affinity/train_binding.py\nfrom torch_pharma.datasets import DavisDataset\nfrom torch_pharma.models.gnn import ProteinLigandGNN\nfrom torch_pharma.tasks import BindingAffinityTask\nfrom torch_pharma.training import Trainer\n\n# Load Davis dataset\ndataset = DavisDataset(root=\"data/davis\")\ntrain_loader, val_loader, test_loader = dataset.get_loaders(\n    batch_size=32,\n    split=[0.8, 0.1, 0.1]\n)\n\n# Protein-ligand interaction model\nmodel = ProteinLigandGNN(\n    ligand_dim=64,\n    protein_dim=128,\n    hidden_dim=256,\n    num_layers=4\n)\n\n# Create task\ntask = BindingAffinityTask(\n    model=model,\n    metrics=[\"mse\", \"ci\", \"rm2\"]  # Concordance Index, Modified R²\n)\n\n# Train\ntrainer = Trainer(\n    max_epochs=200,\n    early_stopping={\"patience\": 20, \"metric\": \"val_ci\", \"mode\": \"max\"}\n)\n\ntrainer.fit(task, train_loader, val_loader)\n\n# Evaluate\nresults = trainer.evaluate(task, test_loader)\nprint(f\"MSE: {results['mse']:.4f}\")\nprint(f\"CI: {results['ci']:.4f}\")"}]}],["$","h2",null,{"className":"mb-4 mt-8 text-2xl font-semibold","children":"Contributing Examples"}],["$","p",null,{"className":"mb-4","children":"We welcome contributions of new examples. To add an example:"}],["$","ul",null,{"className":"mb-6 list-inside list-disc space-y-2 text-muted-foreground","children":[["$","li",null,{"children":["Create a new directory under ",["$","code",null,{"className":"rounded bg-muted px-1","children":"examples/"}]]}],["$","li",null,{"children":"Include a complete, runnable script"}],["$","li",null,{"children":"Add a README with dataset instructions and expected results"}],["$","li",null,{"children":"Reference relevant research papers"}]]}]]}],"$undefined",null,["$","$La",null,{"children":["$Lb","$Lc",null]}]]}],{},null,false]},null,false]},null,false],["$","$1","h",{"children":[null,["$","$1","gMHHSlNA5x1VVepw3sQyG",{"children":[["$","$Ld",null,{"children":"$Le"}],null]}],["$","$Lf",null,{"children":"$L10"}]]}],false]],"m":"$undefined","G":["$11","$undefined"],"s":false,"S":true}
+e:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]
+b:null
+c:null
+10:[["$","title","0",{"children":"Examples | Torch Pharma"}],["$","meta","1",{"name":"description","content":"Runnable examples and experiments for Torch Pharma"}],["$","meta","2",{"name":"generator","content":"v0.app"}]]
